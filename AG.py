@@ -1,8 +1,9 @@
+# %%
 import pandas as pd
 import math
 import random
 from matplotlib import pyplot as plt
-
+import numpy as np
 
 # population_size = 400
 # generation_num = 800
@@ -90,6 +91,9 @@ class Tour:
     def getCity(self, tourPosition):
         return self.tour[tourPosition]
 
+    def getTour(self):
+        return self.tour
+
     def setCity(self, tourPosition, city):
         self.tour[tourPosition] = city
         self.fitness = 0.0
@@ -152,6 +156,13 @@ class Population:
                 fittest = self.getTour(i)
         return fittest
 
+    def getMeanTour(self):
+        population_tour = np.zeros(self.populationSize())
+        for i in range(self.populationSize()):
+            population_tour[i] = self.getTour(i).getDistance()
+
+        return np.mean(population_tour)
+
     def populationSize(self):
         return len(self.tours)
 
@@ -159,11 +170,11 @@ class Population:
 class GA:
     def __init__(self, tourmanager):
         self.tourmanager = tourmanager
-        self.mutationRate = 0.005
-        self.tournamentSize = 10
+        self.mutationRate = 0.1
+        self.tournamentSize = 2
         self.elitism = True
 
-    def evolvePopulation(self, pop):
+    def evolvePopulation(self, pop, mutation_type='random_swaps'):
         newPopulation = Population(self.tourmanager, pop.populationSize(), False)
         elitismOffset = 0
         if self.elitism:
@@ -177,7 +188,10 @@ class GA:
             newPopulation.saveTour(i, child)
 
         for i in range(elitismOffset, newPopulation.populationSize()):
-            self.mutate(newPopulation.getTour(i))
+            if mutation_type == 'random_swaps':
+                self.mutate(newPopulation.getTour(i))
+            elif mutation_type == 'inverse_mutation':
+                self.inverse_mutation(newPopulation.getTour(i))
 
         return newPopulation
 
@@ -206,6 +220,7 @@ class GA:
     def mutate(self, tour):
         for tourPos1 in range(0, tour.tourSize()):
             if random.random() < self.mutationRate:
+
                 tourPos2 = int(tour.tourSize() * random.random())
 
                 city1 = tour.getCity(tourPos1)
@@ -214,6 +229,17 @@ class GA:
                 tour.setCity(tourPos2, city1)
                 tour.setCity(tourPos1, city2)
 
+    def inverse_mutation(self, tour):
+        if random.random() < self.mutationRate:
+            start_inv, stop_inv = np.random.randint(0, tour.tourSize(), 2)
+            if start_inv > stop_inv:
+                start_inv, stop_inv = stop_inv, start_inv
+            inversedTour = tour.getTour()
+            inversedTour[start_inv:stop_inv] = inversedTour[start_inv:stop_inv][::-1]
+            for i in range(start_inv, stop_inv):
+                tour.setCity(i, inversedTour[i])
+
+            
     def tournamentSelection(self, pop):
         tournament = Population(self.tourmanager, self.tournamentSize, False)
         for i in range(0, self.tournamentSize):
@@ -242,18 +268,20 @@ if __name__ == '__main__':
     ga = GA(tourmanager)
     pop = ga.evolvePopulation(pop)
     loss = []
-    for i in range(0, 400):
-        pop = ga.evolvePopulation(pop)
+    mean_scores = []
+    for i in range(0, 10000):
+        pop = ga.evolvePopulation(pop, mutation_type='inverse_mutation')
         score = pop.getFittest().getDistance()
         loss += [score]
-        print(f"Generation: {i} best distance: {score}")
+        mean_score = pop.getMeanTour()
+        mean_scores += [mean_score]
+        
+        print(f"Generation: {i} best distance: {score} mean score: {mean_score}")
 
     # Print final results
     print("Finished")
 
     print("Final distance: " + str(pop.getFittest().getDistance()))
-
-    # print("Solution:")
 
     solution = pop.getFittest()
 
@@ -262,8 +290,16 @@ if __name__ == '__main__':
 
     last_points = [list_of_cities[0], list_of_cities[-1]]
     print(last_points)
-    axs[0].scatter(*zip(*list_of_cities))
-    axs[0].plot(*zip(*list_of_cities))
-    axs[0].plot(*zip(*last_points))
-    axs[1].plot(loss)
+    axs[1].title.set_text('Shortest Route')
+    axs[1].scatter(*zip(*list_of_cities))
+    axs[1].plot(*zip(*list_of_cities))
+    axs[1].plot(*zip(*last_points), c='#1f77b4')
+    axs[0].title.set_text('GA Performance')
+    axs[0].plot(loss)
+    axs[0].plot(mean_scores)
+    axs[0].set_xlabel('Generation')
+    axs[0].set_ylabel('Distance')
     plt.show()
+
+
+# %%
