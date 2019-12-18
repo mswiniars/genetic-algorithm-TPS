@@ -170,7 +170,7 @@ class Population:
 class GA:
     def __init__(self, tourmanager):
         self.tourmanager = tourmanager
-        self.mutationRate = 0.1
+        self.mutationRate = 0.02
         self.tournamentSize = 2
         self.elitism = True
 
@@ -269,8 +269,8 @@ if __name__ == '__main__':
     pop = ga.evolvePopulation(pop)
     loss = []
     mean_scores = []
-    for i in range(0, 10000):
-        pop = ga.evolvePopulation(pop, mutation_type='inverse_mutation')
+    for i in range(0, 10):
+        pop = ga.evolvePopulation(pop, mutation_type='random_swaps')
         score = pop.getFittest().getDistance()
         loss += [score]
         mean_score = pop.getMeanTour()
@@ -295,10 +295,11 @@ if __name__ == '__main__':
     axs[1].plot(*zip(*list_of_cities))
     axs[1].plot(*zip(*last_points), c='#1f77b4')
     axs[0].title.set_text('GA Performance')
-    axs[0].plot(loss)
-    axs[0].plot(mean_scores)
+    axs[0].plot(loss, label='Best distance')
+    axs[0].plot(mean_scores, label='Mean distance')
     axs[0].set_xlabel('Generation')
     axs[0].set_ylabel('Distance')
+    axs[0].legend()
     plt.show()
 
 
